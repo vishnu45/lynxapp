@@ -1,0 +1,1 @@
+web: cd Server ; python server.py

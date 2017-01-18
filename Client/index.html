@@ -1,0 +1,612 @@
+<html>
+<head>
+
+	<script type="text/javascript" charset="utf8" src="https://code.jquery.com/jquery-1.10.2.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+	<link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+	<link rel="stylesheet" href="http://libs.cartocdn.com/cartodb.js/v3/themes/css/cartodb.css" />
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.3/jquery-ui.min.js"></script>
+	<script src="http://libs.cartocdn.com/cartodb.js/v3/cartodb.js"></script>
+	<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+	<!--[if lte IE 8]>
+	<link rel="stylesheet" href="http://libs.cartocdn.com/cartodb.js/v2/themes/css/cartodb.ie.css" />
+	<![endif]-->
+	<style>
+		html, body {width:100%; height:100%; padding: 0; margin: 0;}
+
+		#cartodb-map { width: 100%; height:100%; background: black;}
+
+		.spacer {
+			margin-top: 20px; /* define margin as you see fit */
+		}
+
+		.footer3 {
+			background-color:rgba(0,0,0,0.65);
+			position: fixed;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			z-index:10001;
+			display:none;
+			height:50%;
+		} 
+
+		.icon-list{
+			display: inline-block;
+			font-size: 1.25em;
+		}
+
+		#optionShow {
+			position:absolute;
+			left: 15px;
+			top: 180px;
+			z-index: 1000;
+		}
+
+		#gotoLoc {
+			position:absolute;
+			left: 15px;
+			top: 130px;
+			z-index: 1000;
+		}
+
+		#resetMap {
+			position:absolute;
+			left: 15px;
+			top: 230px;
+			z-index: 1000;
+		}
+
+		#tripDetail {
+			position:absolute;
+			left: 15px;
+			top: 280px;
+			z-index: 1000;
+			color: white;
+		}
+		#tripDetail>#ICO
+		{
+			position:absolute;
+			left: 4px;
+			top: 1px;
+		}
+
+		.modal
+		{
+			overflow: hidden;
+			z-index: 10000;
+		}
+		.modal-dialog{
+			margin-right: 0;
+			margin-left: 0;
+			z-index: 10000;
+		}
+		.btn-circle.btn-lg {
+			width: 40px;
+			height: 40px;
+			padding: 10px 10px;
+			font-size: 18px;
+			line-height: 1.33;
+			border-radius: 25px;
+		}
+	</style>
+
+	<script>
+		$(document).ready(function(){
+
+			$("#myModal").draggable({
+				handle: ".modal-header"
+			});
+
+			$('#closeFooter3').click(function() {
+				$( '.footer3' ).toggle( 'slow' );
+			});
+
+			$(window).resize(function(){
+				$("#copy2").height($(".footer3").height() - 150);
+			});
+
+			// Resize footers on startup
+			$("#copy2").height($(".footer3").height() - 150);
+
+			$("#weather").mouseenter( function(){ 
+				$('#datadiv').show();
+			}).mouseleave( function(){
+				$('#datadiv').hide();
+			});
+
+			$("#today").mouseenter( function(){ 
+				$('#datadiv2').html(function(){
+					var td = new Date();
+					document.getElementById("datadiv2").innerHTML = td.toString();
+				}); 
+				$('#datadiv2').show();
+			}).mouseleave(function(){
+				$('#datadiv2').hide();
+			});
+
+			$("#cost").mouseenter( function(){ 
+				$('#datadiv3').show();
+			}).mouseleave( function(){
+				$('#datadiv3').hide();
+			});
+
+
+			$("#geographic-from").change(function()
+			{
+				var queryURL;
+
+				if($(this).val() == "East Orlando")
+				{
+					queryURL = "http://gangadhar.cartodb.com/api/v2/sql?q=SELECT DISTINCT stop_name,stop_id FROM rawdata_copy where stop_lon > -81.381401";
+				}
+				else if($(this).val() == "West Orlando")
+				{
+					queryURL = "http://gangadhar.cartodb.com/api/v2/sql?q=select DISTINCT stop_name,stop_id from rawdata_copy where stop_lon < -81.381401";
+				}
+				else if($(this).val() == "North Orlando"){
+					queryURL = "http://gangadhar.cartodb.com/api/v2/sql?q=select  DISTINCT stop_name,stop_id from rawdata_copy where stop_lat > 28.549";
+				}
+				else{
+					queryURL = "http://gangadhar.cartodb.com/api/v2/sql?q=select  DISTINCT stop_name,stop_id from rawdata_copy where stop_lat < 28.549";
+				}
+				$.ajax({
+					url: queryURL,
+					dataType: "json",
+					complete: function(data){
+											//console.log($.parseJSON(data.responseText).rows.forEach(function(entry){console.log(entry.stop_name);}
+
+											$('#from-bus-station').empty();
+
+											$.parseJSON(data.responseText).rows.forEach(function(entry){
+												$('#from-bus-station').append($('<option attr = "s'+entry.stop_id+'"></option>').val(entry.stop_name).html( entry.stop_name));
+											});
+										}
+									});
+			});
+
+			$("#geographic-to").change(function()
+			{
+				var queryURL1;
+
+				if($(this).val() == "East Orlando")
+				{
+					queryURL1 = "http://gangadhar.cartodb.com/api/v2/sql?q=SELECT DISTINCT stop_name,stop_id FROM rawdata_copy where stop_lon > -81.381401";
+
+				}
+				else if($(this).val() == "West Orlando")
+				{
+					queryURL1 = "http://gangadhar.cartodb.com/api/v2/sql?q=select DISTINCT stop_name,stop_id from rawdata_copy where stop_lon < -81.381401";
+				}
+				else if($(this).val() == "North Orlando"){
+					queryURL1 = "http://gangadhar.cartodb.com/api/v2/sql?q=select  DISTINCT stop_name,stop_id from rawdata_copy where stop_lat > 28.549";
+				}
+				else{
+					queryURL1 = "http://gangadhar.cartodb.com/api/v2/sql?q=select  DISTINCT stop_name,stop_id from rawdata_copy where stop_lat < 28.549";
+				}
+				$.ajax({
+					url: queryURL1,
+					dataType: "json",
+					complete: function(data){
+											//console.log($.parseJSON(data.responseText).rows.forEach(function(entry){console.log(entry.stop_name);}
+
+											$('#to-bus-station').empty();
+
+											$.parseJSON(data.responseText).rows.forEach(function(entry){
+												$('#to-bus-station').append($('<option attr = "s'+entry.stop_id+'"></option>').val(entry.stop_name).html( entry.stop_name));
+											});
+										}
+									});
+			});
+
+			var busquery = "http://gangadhar.cartodb.com/api/v2/sql?q=SELECT DISTINCT link FROM busroute_schedule ORDER BY link ASC"
+			$.ajax({
+				url: busquery,
+				dataType: "json",
+				complete: function(data){
+
+							//console.log($.parseJSON(data.responseText).rows.forEach(function(entry){console.log(entry.route_short_name)}));
+
+							$.parseJSON(data.responseText).rows.forEach(function(entry){
+								console.log(entry.link);
+								$('#lynx').append($('<option attr = '+entry.link+'></option>').val(entry.link).html( entry.link));
+							});
+						}
+					})
+		});
+
+var callbackFunction = function(data) {
+	var wind = data.query.results.channel.wind;
+	$('#datadiv').html("Temperature (F) : " + wind.chill);
+};
+
+$.ajax({
+	url: "https://query.yahooapis.com/v1/public/yql?q=select wind from weather.forecast where woeid in (select woeid from geo.places(1) where text='orlando, fl')&format=json&callback=callbackFunction"
+})
+
+	// GLOBAL REF TO MAP
+	var map;
+
+	function resetMapFunc()
+	{
+		var SQLfilter = "SELECT * FROM rawdata_283_29";
+		var SQLfilter2 = "SELECT * from busroute_schedule";
+		globalLayers[1].getSubLayer(1).setSQL(SQLfilter);
+		globalLayers[1].getSubLayer(0).setSQL(SQLfilter2);
+
+	}
+
+	function mapToPosition(position) {
+		lon = position.coords.longitude;
+		lat = position.coords.latitude;
+		map.setView(new L.LatLng(lat,lon), 14);
+		new L.CircleMarker([lat,lon],{radius: 4}).addTo(map);
+		document.getElementById('approxtime').innerHTML = "Your current location is the blue circle. Latitude: "+lat+" and Longitude: "+lon
+	}
+
+	function geoFindMe() {
+
+		if (navigator.geolocation) {
+			var timeoutVal = 10 * 1000 * 1000;
+			navigator.geolocation.watchPosition(
+				mapToPosition, 
+				alertError,
+				{ enableHighAccuracy: true, timeout: timeoutVal, maximumAge: 0 }
+				);
+		}
+		else {
+			alert("Geolocation is not supported by this browser");
+		}
+
+		function alertError(error) {
+			var errors = { 
+				1: 'Permission denied',
+				2: 'Position unavailable',
+				3: 'Request timeout'
+			};
+			alert("Error: " + errors[error.code]);
+		}
+	}
+
+
+	function showroute(){
+
+		var selectedbus = document.getElementById('lynx').value;
+		var disptime = new Date();
+		var dhr = disptime.getHours();
+		var dmin = disptime.getMinutes()+(Math.floor((Math.random()*40)));
+		var dispt = "The next bus for Lynx " + selectedbus + " starts at ";
+		document.getElementById('approxtime').innerHTML = dispt+dhr+":"+dmin;
+
+		
+		if(selectedbus == "Clear All"){
+			resetMapFunc();
+			document.getElementById('approxtime').innerHTML = "";
+		}
+		else
+		{
+			var SQLfilter3 = "SELECT * FROM busroute_schedule where link = "+selectedbus;
+			globalLayers[1].getSubLayer(0).setSQL(SQLfilter3);
+			var SQLfilter4 = "SELECT * FROM rawdata_283_29 where route_short_name = "+selectedbus;
+			globalLayers[1].getSubLayer(1).setSQL(SQLfilter4);
+		}
+	}
+
+	function check() {
+		if(document.getElementById("geographic-from").value == "Select Starting Geography")
+		{
+			$("#ErrorDiv").show()
+			$("#ErrorDiv").html("Please select an option for Geograhic From drop-down")
+			$("#ErrorDiv").fadeOut(4000);
+			document.getElementById("geographic-from").focus();
+			return false;
+		}
+		if(document.getElementById("geographic-to").value == "Select Destination Geography")
+		{
+			$("#ErrorDiv").show()
+			$("#ErrorDiv").html("Please select an option for Geograhic To drop-down")
+			$("#ErrorDiv").fadeOut(4000);
+			document.getElementById("geographic-to").focus();
+			return false;
+		}
+		if(document.getElementById("from-bus-station").value == "Select From Bus-Station"){
+			$("#ErrorDiv").show()
+			$("#ErrorDiv").html("Please select an option for From Bus-Station")
+			$("#ErrorDiv").fadeOut(4000);
+			document.getElementById("from-bus-station").focus();
+			return false;
+		}
+		if(document.getElementById("to-bus-station").value == "Select To Bus-Station"){
+			$("#ErrorDiv").show()
+			$("#ErrorDiv").html("Please select an option for To Bus-Station")
+			$("#ErrorDiv").fadeOut(4000);
+			document.getElementById("to-bus-station").focus();
+			return false;
+		}
+		if(document.getElementById("from-bus-station").value === document.getElementById("to-bus-station").value){
+			$("#ErrorDiv").show()
+			$("#ErrorDiv").html("From and To Bus stops must be different! Please select appropriate bus stops!")
+			$("#ErrorDiv").fadeOut(4000);
+			return false;
+		}
+		if(document.getElementById("rank").value < 1 || document.getElementById('rank').value >3){
+			$("#ErrorDiv").show();
+			$("#ErrorDiv").html("Maximum of 3 routes can be displayed. Please enter value from 1 to 3");
+			$("#ErrorDiv").fadeOut(4000);
+			return false;
+		}
+
+
+		var atr,atr1,rankno;
+		var startstop = document.getElementById('from-bus-station').value;
+
+		atr = $('#from-bus-station option:selected').attr('attr');
+		atr1 = $('#to-bus-station option:selected').attr('attr');
+		rankno = document.getElementById('rank').value;
+		var sendURL = "http://lynxapp-45.herokuapp.com/pathavail?source="+atr+"&sink="+atr1+"&rank="+rankno+"";    
+		var sendURL2 = "http://lynxapp-45.herokuapp.com/buschange?source="+atr+"&sink="+atr1+"&rank=1"
+		$.ajax({
+			url: sendURL,
+							//url:"http://localhost:8888/single?source=s792&sink=s3310&rank=2",
+							dataType: "json",
+							complete: function(data){
+										//alert(JSON.stringify($.parseJSON(data.responseText).Path));
+
+										var arrayPath = $.parseJSON(data.responseText.replace(/s/g,'')).Path.split(",");
+										$('#InfoDiv').html("");
+										$('#InfoDiv').html("Bus Stops : "+arrayPath + "<br>Trip Time in mins: " + $.parseJSON(data.responseText).Cost);
+										var SQLfilter = "SELECT * FROM rawdata_283_29 where stop_id IN (" + arrayPath + ");";
+										var subLayerOptions = {
+											sql: SQLfilter
+										}
+
+
+										globalLayers[1].getSubLayer(1).setSQL(SQLfilter);
+										globalLayers[1].getSubLayer(1).setCartoCSS("#rawdata_283_29{marker-fill:#FF6600; marker-width:10; marker-line-width:1.5; marker-line-color: #FFF;marker-placement:point;} #rawdata_283_29[stop_id=" + atr.replace(/s/g,'') + "]{marker-fill:#33A02C; marker-width:15; marker-line-width:1.5; marker-line-color: #FFF; marker-placement:point;}" + "#rawdata_283_29[stop_id=" + atr1.replace(/s/g,'') + "]{marker-fill:#FF0000; marker-width:15; marker-line-width:1.5; marker-line-color: #FFF;marker-placement:point;}");
+
+										
+									}
+								});
+
+
+		$.ajax({
+			url: sendURL2,
+							//url:"http://localhost:8888/single?source=s792&sink=s3310&rank=2",
+							dataType: "json",
+							complete: function(data){
+										//alert(JSON.stringify($.parseJSON(data.responseText).Path));
+
+										var test = $.parseJSON(data.responseText).BusNo.split(",");
+
+
+
+										var SQLfilter = "SELECT * FROM busroute_schedule where link IN (" + test + ");";
+										var subLayerOptions = {
+											sql: SQLfilter
+										}
+
+
+										var arrayStopName = $.parseJSON(data.responseText).StopName.split(",");
+										var arrayPathBus = $.parseJSON(data.responseText).BusNo.split(",");
+
+										var stringPath = ""
+										var arrLength = arrayPathBus.length;
+										var i = 0;
+
+										/*alert(arrayStopName)
+										alert(arrayPathBus)
+					console.log(arrayStopName);
+					console.log(arrayPathBus);*/
+					for(i = 0; i < arrLength; i++)
+					{
+						stringPath = stringPath + "Take Bus " + arrayPathBus[i] + " at " + arrayStopName[i] + "<br>";
+					}
+
+					$('#InfoDiv').html($('#InfoDiv').html() + "<br><br>Trip: <br>" + stringPath )
+					$('#InfoDiv').html($('#InfoDiv').html() + "<br>")
+
+
+					globalLayers[1].getSubLayer(0).setSQL(SQLfilter);
+
+
+				}
+			});
+
+		var newdate = new Date();
+		var newhr = newdate.getHours();
+		var newmin = 3+newdate.getMinutes()+(Math.floor((Math.random()*35)));;
+		var newstop = "The Bus arrives at "+ startstop+ " around ";
+		document.getElementById('approxtime').innerHTML = newstop+ newhr+":"+newmin;
+	}
+
+</script>
+
+</head>
+
+<body>
+	<!--<button type="button" class="btn-primary"id='optionShow' onclick=" $( '.footer3' ).toggle( 'slow')">INFO</button>-->
+	<button type="button" id="optionShow" class="btn btn-primary btn-default btn-circle btn-lg" onclick=" $( '.footer3' ).toggle( 'slow')"><i class="fa fa-bus"></i></button>
+
+	<!--<button type="button" class="btn-success" id="gotoLoc" onclick="geoFindMe()">MY LOCATION</button>-->  
+	<button type="button" id="gotoLoc" class="btn btn-success btn-default btn-circle btn-lg" onclick="geoFindMe()"><i class="fa fa-map-marker"></i></button>
+
+	<!--<button type="button" class="btn-success" id="resetMap" onclick="resetMapFunc()">RESET MAP</button>-->
+	<button type="button" id="resetMap" class="btn btn-danger btn-default btn-circle btn-lg" onclick="resetMapFunc()"><i class="fa fa-refresh fa-spin"></i></button>
+
+	<!--<button type="button"  class="btn btn-warning btn-default btn-circle btn-lg"></button>-->
+	<button href="#myModal" id="tripDetail" data-backdrop="false"  data-toggle="modal" class="btn btn-info btn-default btn-circle btn-lg"><i id="ICO" class="fa fa-info-circle fa-2x"></i></button>
+
+	<!--<a href="#myModal"  data-backdrop="false"  data-toggle="modal">Toggle Trip Info</a>-->
+
+
+	<div id="myModal" class="modal fade" >
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+					<h4 class="modal-title" id="trip-info-bt">Trip Info</h4>
+
+				</div>
+				<div class="modal-body">
+					<div id="InfoDiv" style="margin-top:10px;color:black;"></div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+				</div>
+			</div>
+			<!-- /.modal-content -->
+		</div>
+		<!-- /.modal-dialog -->
+	</div>
+
+
+
+	<div id='cartodb-map'></div>
+
+	<div class="footer3">
+		<div class="container-fluid spacer">
+			<span class="tools pull-right">
+				<!-- <a id="theButton" class="fa fa-chevron-up fa-lg" href="javascript:;"></a> -->
+				<a id="closeFooter3" class="fa fa-times fa-lg" href="javascript:;"></a>
+			</span>
+		</div>
+
+		<div class="container-fluid spacer">
+
+			<div class="row">
+				<div class="col-lg-8 col-md-8 col-sm-8">
+					<div class="panel panel-default">
+						<div class="panel-body" id="RecentUpdates">
+							<div id="copy2">
+
+
+
+								<div class="row">
+									<div class="col-lg-6 col-md-6 col-sm-6">
+
+										<p>Starting</p>
+
+										<select class = "form-control input-sm" id="geographic-from" name="geographic-from">
+											<option  disabled selected>Select Starting Geography</option>
+											<option>East Orlando</option>
+											<option>West Orlando</option>
+											<option>North Orlando</option>
+											<option>South Orlando</option>
+										</select>
+
+										<br>
+
+										<select class = "form-control input-sm" id = "from-bus-station" name = "from-bus-station">
+											<option disabled selected>Select From Bus-station</option>
+										</select>
+
+										<div style="margin-top:10px">
+											Route Priority: <select id = 'rank'>
+											<option>1</option>
+											<option>2</option>
+											<option>3</option>
+										</select>
+									</div>
+
+
+
+								</div>
+								<div class="col-lg-6 col-md-6 col-sm-6">
+
+									<p>Destination</p>
+
+
+
+									<select class = "form-control input-sm" id="geographic-to" name="geographic-to">
+										<option  disabled selected>Select Destination Geography</option>
+										<option>East Orlando</option>
+										<option>West Orlando</option>
+										<option>North Orlando</option>
+										<option>South Orlando</option>
+									</select>
+
+									<br>
+
+									<select class = "form-control input-sm" id = "to-bus-station" name = "to-bus-station">
+										<option disbaled selected>Select To Bus-Station</option>
+									</select>
+
+									<div id = 'lynxbus' style= "margin-top:10px">
+										<select id = 'lynx' onChange = "showroute()">
+											<option disabled selected>Lynx No</option>
+											<option>Clear All</option>
+										</select>
+										<div id = 'approxtime'></div>
+									</div>
+
+								</div>
+
+							</div>
+
+							<div style="margin-top:10px;"><button onclick = "check();">Submit</button></div>
+							<div class="row">
+								<div id="ErrorDiv" style="margin-top:10px;color:red;float:right;"></div>
+							</div>
+
+							<!--<a href="#myModal"  data-backdrop="false" data-toggle="modal">Toggle Trip Info</a>-->
+						</div>
+
+					</div>
+				</div>
+			</div>
+
+			<div class="col-lg-4 col-md-4 col-sm-4">
+				<div class="panel panel-default">
+					<div class="panel-body" >
+						<div id="copy2">
+
+							<div class="icon-list">
+								<a href="#" id = "weather"><i class="fa fa-cloud" style="padding:10px"></i></a>
+								<a href="#"></a>
+								<a href="#" id = "today"><i class="fa fa-calendar" style="padding:10px"></i></a>
+								<a href="#"></a>
+								<a href="#" id = "cost"><i class="fa fa-usd" style="padding:10px"></i></a>
+								<!--a href="#" id = "location"><i class="fa fa-location-arrow"></i></a-->
+							</div>
+							<div style=" margin-top:20px;">
+
+								<div id = "datadiv" style = "display:none;"></div>
+								<div id = "datadiv2" style = "display:none;"></div>
+								<div id = "datadiv3" style= "display:none;">
+									The cost for single ride is $2. You can ask for transfer ticket and board another bus within 90 minutes using this transfer ticket. A single day ticket cost $4.50
+								</div>
+
+							</div>
+
+							<br>
+							
+						</div>
+					</div>
+				</div>
+			</div>
+		
+		</div>          
+	</div>
+</div>
+
+
+<script>
+	var globalLayers;
+	window.onload = function() {
+
+		cartodb.createVis('cartodb-map', 'https://cartomaporl.cartodb.com/api/v2/viz/813114e4-e4b1-11e4-83b0-0e4fddd5de28/viz.json', {"time_slider":false, "cartodb_logo":false, "loaderControl":false} )
+		.done(function(vis, layers) {
+						// layer 0 is the base layer, layer 1 is cartodb layer
+						// when setInteraction is disabled featureOver is triggered
+						map = vis.getNativeMap();
+						globalLayers = layers;
+						// now, perform any operations you need, e.g. assuming map is a L.Map object:
+						// map.setZoom(3);
+						// map.panTo([50.5, 30.5]);
+					});
+	}
+</script>
+
+</body>
+</html>
